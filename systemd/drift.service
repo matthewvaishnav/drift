@@ -1,0 +1,26 @@
+[Unit]
+Description=drift — git-like server state tracker
+Documentation=https://github.com/yourname/drift
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/drift daemon run
+Restart=always
+RestartSec=30
+User=root
+Environment=DRIFT_INTERVAL=3600
+Environment=DRIFT_LOG_FILE=/var/log/drift/drift.log
+
+# Create log directory if needed
+ExecStartPre=/bin/mkdir -p /var/log/drift
+ExecStartPre=/bin/mkdir -p /var/lib/drift
+
+# Security hardening
+NoNewPrivileges=false
+ProtectSystem=false
+ReadWritePaths=/var/lib/drift /var/log/drift
+
+[Install]
+WantedBy=multi-user.target

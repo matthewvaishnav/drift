@@ -1,0 +1,44 @@
+[build-system]
+requires      = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name        = "drift"
+version     = "0.1.0"
+description = "git-like server state tracker — snapshot, diff, and blame your entire server state"
+readme      = "README.md"
+requires-python = ">=3.9"
+license     = { text = "MIT" }
+keywords    = ["devops", "sysadmin", "server", "drift", "audit", "compliance"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Systems Administration",
+    "Topic :: System :: Monitoring",
+]
+
+dependencies = [
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov", "ruff"]
+
+[project.scripts]
+drift = "drift.cli:main"
+
+[project.entry-points."console_scripts"]
+drift-pam-hook = "drift.daemon:pam_hook"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
