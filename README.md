@@ -52,7 +52,7 @@ $ drift diff HEAD~1
 ## Install
 
 ```bash
-pip install drift
+pip install drift-tracker
 
 # Or from source:
 git clone https://github.com/matthewvaishnav/drift

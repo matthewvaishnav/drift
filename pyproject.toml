@@ -3,7 +3,7 @@ requires      = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name        = "drift"
+name        = "drift-tracker"
 version     = "0.1.0"
 description = "git-like server state tracker — snapshot, diff, and blame your entire server state"
 readme      = "README.md"
