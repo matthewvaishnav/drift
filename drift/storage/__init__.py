@@ -21,6 +21,7 @@ from __future__ import annotations
 import gzip
 import json
 import os
+import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
