@@ -55,7 +55,7 @@ $ drift diff HEAD~1
 pip install drift-tool
 
 # Or from source:
-git clone https://github.com/yourname/drift
+git clone https://github.com/matthewvaishnav/drift
 pip install ./drift
 ```
 
