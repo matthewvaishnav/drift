@@ -52,7 +52,7 @@ $ drift diff HEAD~1
 ## Install
 
 ```bash
-pip install drift-tool
+pip install drift
 
 # Or from source:
 git clone https://github.com/matthewvaishnav/drift
