@@ -1,15 +1,15 @@
 [build-system]
-requires      = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name        = "drift-tracker"
-version     = "0.1.0"
+version     = "0.1.1"
 description = "git-like server state tracker — snapshot, diff, and blame your entire server state"
 readme      = "README.md"
 requires-python = ">=3.9"
 license     = { text = "MIT" }
-keywords    = ["devops", "sysadmin", "server", "drift", "audit", "compliance"]
+keywords    = ["devops", "sysadmin", "server", "drift-tracker", "audit", "compliance"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
