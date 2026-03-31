@@ -135,7 +135,7 @@ sudo drift install
 ```
                 ┌─────────────────────┐
   SSH login ───►│                     │
-  SSH logout──►│   drift daemon      │──► take snapshot
+  SSH logout──► │   drift daemon      │──► take snapshot
   Scheduled────►│   (hourly)          │
   drift snap───►│                     │
                 └──────────┬──────────┘
