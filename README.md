@@ -52,12 +52,18 @@ $ drift diff HEAD~1
 ## Install
 
 ```bash
+# From PyPI:
 pip install drift-tracker
+# or (recommended for CLI tools):
+pipx install drift-tracker
 
 # Or from source:
 git clone https://github.com/matthewvaishnav/drift
 pip install ./drift
 ```
+
+> Note: drift targets Linux (it reads `/proc`, `/etc`, and integrates with systemd/PAM).  
+> On Windows, run it inside WSL or on a Linux host.
 
 ### Install as systemd daemon (recommended)
 
