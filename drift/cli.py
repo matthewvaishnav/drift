@@ -5,6 +5,7 @@ Commands:
   drift snapshot              Take a snapshot now
   drift log [n]               Show commit log (default: 20 entries)
   drift diff [hash1] [hash2]  Show changes between snapshots
+  drift revert <hash>         Revert system state to a previous snapshot
   drift status                Show current server state summary
   drift blame <hash>          Show who/what caused changes in a commit
   drift show <hash>           Show full details of a snapshot
@@ -273,6 +274,81 @@ def _search_cmd(args) -> int:
     return 0
 
 
+def _revert_cmd(args) -> int:
+    """Handle revert command - revert system state to a previous snapshot."""
+    from drift.revert import revert_to_snapshot, RevertOptions
+    
+    target_hash = args.hash
+    
+    # Build revert options from command line arguments
+    options = RevertOptions(
+        dry_run=getattr(args, "dry_run", False),
+        force=getattr(args, "force", False),
+        skip_confirmation=getattr(args, "skip_confirmation", False),
+        exclude_categories=set(getattr(args, "exclude", "").split(",")) if getattr(args, "exclude", "") else set(),
+        timeout_seconds=getattr(args, "timeout", 300),
+        create_backup=not getattr(args, "no_backup", False)
+    )
+    
+    try:
+        from rich.console import Console
+        c = Console()
+        
+        if options.dry_run:
+            c.print(f"[bold cyan]🔍 Dry run: Revert to {target_hash}[/bold cyan]")
+        else:
+            c.print(f"[bold yellow]⚠️  Reverting to {target_hash}[/bold yellow]")
+            
+        # Execute the revert
+        result = revert_to_snapshot(target_hash, options)
+        
+        if result.success:
+            if options.dry_run:
+                c.print(f"[green]✅ Dry run complete[/green]")
+                if result.operation_plan:
+                    c.print(f"   Would execute [bold]{result.operation_plan.total_operations}[/bold] operations")
+                    c.print(f"   Estimated duration: [dim]{result.operation_plan.estimated_duration}s[/dim]")
+                    if result.operation_plan.risk_assessment.value != "low":
+                        c.print(f"   Risk level: [yellow]{result.operation_plan.risk_assessment.value}[/yellow]")
+                else:
+                    c.print("   [dim]No operations needed[/dim]")
+            else:
+                c.print(f"[bold green]✅ Revert completed successfully[/bold green]")
+                c.print(f"   Operations executed: [bold]{result.operations_executed}[/bold]")
+                c.print(f"   Duration: [dim]{result.duration_seconds:.1f}s[/dim]")
+                if result.backup_hash:
+                    c.print(f"   Safety backup: [yellow]{result.backup_hash}[/yellow]")
+        else:
+            c.print(f"[bold red]❌ Revert failed[/bold red]")
+            if result.error_message:
+                c.print(f"   Error: {result.error_message}")
+            if result.operations_failed > 0:
+                c.print(f"   Failed operations: [red]{result.operations_failed}[/red]")
+                if result.backup_hash:
+                    c.print(f"   Safety backup available: [yellow]{result.backup_hash}[/yellow]")
+            return 1
+            
+    except ImportError:
+        # Fallback for systems without rich
+        if options.dry_run:
+            print(f"Dry run: Revert to {target_hash}")
+        else:
+            print(f"Reverting to {target_hash}")
+            
+        result = revert_to_snapshot(target_hash, options)
+        
+        if result.success:
+            if options.dry_run:
+                print(f"Dry run complete - would execute {result.operation_plan.total_operations if result.operation_plan else 0} operations")
+            else:
+                print(f"Revert completed successfully - {result.operations_executed} operations executed")
+        else:
+            print(f"Revert failed: {result.error_message}")
+            return 1
+    
+    return 0
+
+
 def _fmt_ts(ts: str) -> str:
     try:
         from datetime import datetime, timezone
@@ -517,6 +593,9 @@ Examples:
   drift diff                        Show what changed since last snapshot
   drift diff HEAD~1                 Changes between last two snapshots
   drift diff abc123 def456          Changes between specific snapshots
+  drift revert abc123               Revert to snapshot abc123
+  drift revert abc123 --dry-run     Preview what revert would do
+  drift revert abc123 --exclude packages  Revert excluding packages
   drift blame abc123                Who caused changes in this commit?
   drift show abc123                 Full details of a snapshot
   drift search nginx                Find all snapshots containing 'nginx'
@@ -562,6 +641,23 @@ Examples:
     # search
     p_search = sub.add_parser("search", help="Search across all snapshots")
     p_search.add_argument("term", help="Search term")
+
+    # revert
+    p_revert = sub.add_parser("revert", aliases=["r"],
+                              help="Revert system state to a previous snapshot")
+    p_revert.add_argument("hash", help="Target snapshot hash to revert to")
+    p_revert.add_argument("--dry-run", action="store_true",
+                          help="Show what would be done without executing")
+    p_revert.add_argument("--force", action="store_true",
+                          help="Bypass safety validations and confirmations")
+    p_revert.add_argument("--exclude", metavar="CATEGORIES",
+                          help="Comma-separated list of categories to exclude (packages,services,users,etc.)")
+    p_revert.add_argument("--timeout", type=int, default=300, metavar="SECONDS",
+                          help="Timeout for operations in seconds (default: 300)")
+    p_revert.add_argument("--no-backup", action="store_true",
+                          help="Skip creating safety backup before revert")
+    p_revert.add_argument("--skip-confirmation", action="store_true",
+                          help="Skip user confirmation prompts")
 
     # daemon
     p_daemon = sub.add_parser("daemon", help="Manage the background daemon")
@@ -618,6 +714,7 @@ Examples:
         "blame":    _blame_cmd,    "b":    _blame_cmd,
         "show":     _show_cmd,
         "search":   _search_cmd,
+        "revert":   _revert_cmd,   "r":    _revert_cmd,
         "export":   _export_cmd,
         "report":   _report_cmd,
         "watch":    _watch_cmd,
