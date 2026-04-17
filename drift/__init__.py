@@ -11,7 +11,11 @@ from drift.revert import (
     RevertResult,
     OperationPlan,
     SafetyAssessment,
-    RiskLevel
+    RiskLevel,
+    DiffAnalyzer,
+    RevertDiff,
+    EnhancedChange,
+    enhance_diff_changes
 )
 
 __all__ = [
@@ -23,5 +27,9 @@ __all__ = [
     "RevertResult",
     "OperationPlan",
     "SafetyAssessment",
-    "RiskLevel"
+    "RiskLevel",
+    "DiffAnalyzer",
+    "RevertDiff", 
+    "EnhancedChange",
+    "enhance_diff_changes"
 ]

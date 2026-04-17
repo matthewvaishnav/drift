@@ -251,17 +251,22 @@ class RevertEngine:
         """
         Analyze differences between current and target snapshots.
         
-        This is a placeholder - will be implemented in Phase 2 with the DiffAnalyzer.
+        Uses the enhanced DiffAnalyzer for revert-specific analysis.
         """
-        # For now, return a simple mock result
-        # TODO: Implement actual diff analysis in Phase 2
-        from drift.diff import diff_snapshots
+        from .analyzer import DiffAnalyzer
         
-        diff_result = diff_snapshots(current_snapshot, target_snapshot)
+        analyzer = DiffAnalyzer()
+        revert_diff = analyzer.analyze_revert_diff(current_snapshot, target_snapshot)
         
         return {
-            "changes": diff_result.changes,
-            "diff_result": diff_result
+            "changes": revert_diff.changes,
+            "revert_diff": revert_diff,
+            "categorized_changes": revert_diff.categorized_changes,
+            "risk_assessments": revert_diff.risk_assessments,
+            "dependencies": revert_diff.dependencies,
+            "complexity_score": revert_diff.complexity_score,
+            "high_risk_changes": revert_diff.get_high_risk_changes(),
+            "infeasible_changes": revert_diff.get_infeasible_changes()
         }
     
     def _plan_operations(self, diff_result: Dict, options: RevertOptions) -> OperationPlan:

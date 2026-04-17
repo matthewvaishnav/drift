@@ -16,6 +16,8 @@ from .models import (
     RevertOptions, Operation, RevertResult, OperationPlan, 
     SafetyAssessment, RiskLevel
 )
+from .analyzer import DiffAnalyzer, RevertDiff
+from .enhanced_change import EnhancedChange, ChangeEnhancer, enhance_diff_changes
 
 __all__ = [
     "RevertEngine",
@@ -25,6 +27,11 @@ __all__ = [
     "OperationPlan",
     "SafetyAssessment",
     "RiskLevel",
+    "DiffAnalyzer",
+    "RevertDiff",
+    "EnhancedChange",
+    "ChangeEnhancer",
+    "enhance_diff_changes",
     "revert_to_snapshot",
     "dry_run_revert",
     "get_revert_status",
