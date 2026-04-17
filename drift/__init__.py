@@ -15,7 +15,11 @@ from drift.revert import (
     DiffAnalyzer,
     RevertDiff,
     EnhancedChange,
-    enhance_diff_changes
+    enhance_diff_changes,
+    OperationPlanner,
+    CommandGenerator,
+    DependencyGraph,
+    validate_operation_plan_dependencies
 )
 
 __all__ = [
@@ -31,5 +35,9 @@ __all__ = [
     "DiffAnalyzer",
     "RevertDiff", 
     "EnhancedChange",
-    "enhance_diff_changes"
+    "enhance_diff_changes",
+    "OperationPlanner",
+    "CommandGenerator",
+    "DependencyGraph", 
+    "validate_operation_plan_dependencies"
 ]

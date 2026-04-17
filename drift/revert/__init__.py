@@ -18,6 +18,8 @@ from .models import (
 )
 from .analyzer import DiffAnalyzer, RevertDiff
 from .enhanced_change import EnhancedChange, ChangeEnhancer, enhance_diff_changes
+from .planner import OperationPlanner, CommandGenerator
+from .dependency import DependencyGraph, DependencyBuilder, validate_operation_plan_dependencies
 
 __all__ = [
     "RevertEngine",
@@ -32,6 +34,11 @@ __all__ = [
     "EnhancedChange",
     "ChangeEnhancer",
     "enhance_diff_changes",
+    "OperationPlanner",
+    "CommandGenerator", 
+    "DependencyGraph",
+    "DependencyBuilder",
+    "validate_operation_plan_dependencies",
     "revert_to_snapshot",
     "dry_run_revert",
     "get_revert_status",

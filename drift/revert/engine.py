@@ -273,13 +273,23 @@ class RevertEngine:
         """
         Plan operations based on diff analysis.
         
-        This is a placeholder - will be implemented in Phase 3 with the OperationPlanner.
+        Uses the OperationPlanner to convert analyzed changes into executable operations.
         """
-        # For now, return an empty operation plan
-        # TODO: Implement actual operation planning in Phase 3
-        from .models import OperationPlan
+        from .planner import OperationPlanner
         
-        return OperationPlan(batches=[])
+        planner = OperationPlanner()
+        revert_diff = diff_result["revert_diff"]
+        
+        # Convert RevertOptions to planner options
+        planner_options = {
+            'exclude_categories': options.exclude_categories,
+            'force': options.force,
+            'timeout': options.timeout_seconds
+        }
+        
+        operation_plan = planner.plan_operations(revert_diff, planner_options)
+        
+        return operation_plan
     
     def _validate_safety(self, operation_plan: OperationPlan, options: RevertOptions) -> SafetyAssessment:
         """
