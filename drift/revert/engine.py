@@ -327,19 +327,53 @@ class RevertEngine:
     
     def _execute_operation_plan(self, operation_plan: OperationPlan, revert_id: str) -> Dict:
         """
-        Execute the planned operations.
-        
-        This is a placeholder - will be implemented in Phase 5 with the ExecutionEngine.
+        Execute the planned operations using the ExecutionEngine.
         """
-        # For now, return a mock successful result
-        # TODO: Implement actual execution in Phase 5
-        logger.info("Operation execution not yet implemented")
+        from .executor import ExecutionEngine
         
-        return {
-            "success": True,
-            "operations_completed": operation_plan.total_operations,
-            "operations_failed": 0
-        }
+        # Create execution engine
+        execution_engine = ExecutionEngine()
+        
+        # Create revert options for execution
+        options = RevertOptions(dry_run=False)  # Real execution
+        
+        try:
+            # Execute the operation plan
+            execution_result = execution_engine.execute_operation_plan(
+                operation_plan, 
+                options,
+                progress_callback=self._log_progress
+            )
+            
+            return {
+                "success": execution_result.success,
+                "operations_completed": execution_result.operations_completed,
+                "operations_failed": execution_result.operations_failed,
+                "error_message": execution_result.error_message,
+                "failed_operations": execution_result.failed_operations
+            }
+            
+        except Exception as e:
+            logger.error(f"Execution engine failed: {e}")
+            return {
+                "success": False,
+                "operations_completed": 0,
+                "operations_failed": operation_plan.total_operations,
+                "error_message": str(e),
+                "failed_operations": []
+            }
+        finally:
+            # Clean up execution engine resources
+            execution_engine.cleanup()
+    
+    def _log_progress(self, progress_info):
+        """Log progress updates from the execution engine."""
+        logger.info(
+            f"Progress: {progress_info.overall_progress_percent:.1f}% "
+            f"({progress_info.completed_operations + progress_info.failed_operations}/"
+            f"{progress_info.total_operations}) - "
+            f"Current: {progress_info.current_operation or 'None'}"
+        )
     
     def _verify_revert_success(self, target_snapshot: Snapshot) -> Dict:
         """

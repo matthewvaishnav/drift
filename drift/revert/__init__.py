@@ -14,13 +14,14 @@ from __future__ import annotations
 from .engine import RevertEngine
 from .models import (
     RevertOptions, Operation, RevertResult, OperationPlan, 
-    SafetyAssessment, RiskLevel, Risk
+    SafetyAssessment, RiskLevel, Risk, ExecutionResult
 )
 from .analyzer import DiffAnalyzer, RevertDiff
 from .enhanced_change import EnhancedChange, ChangeEnhancer, enhance_diff_changes
 from .planner import OperationPlanner, CommandGenerator
 from .dependency import DependencyGraph, DependencyBuilder, validate_operation_plan_dependencies
 from .safety import SafetyValidator, SystemValidator, RiskAssessor, SafetyBackupManager, UserConfirmationManager
+from .executor import ExecutionEngine, CommandExecutor, RollbackManager, ProgressMonitor, ExecutionStatus, ProgressInfo
 
 __all__ = [
     "RevertEngine",
@@ -31,6 +32,7 @@ __all__ = [
     "SafetyAssessment",
     "RiskLevel",
     "Risk",
+    "ExecutionResult",
     "DiffAnalyzer",
     "RevertDiff",
     "EnhancedChange",
@@ -46,6 +48,12 @@ __all__ = [
     "RiskAssessor", 
     "SafetyBackupManager",
     "UserConfirmationManager",
+    "ExecutionEngine",
+    "CommandExecutor",
+    "RollbackManager",
+    "ProgressMonitor",
+    "ExecutionStatus",
+    "ProgressInfo",
     "revert_to_snapshot",
     "dry_run_revert",
     "get_revert_status",

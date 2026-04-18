@@ -13,6 +13,7 @@ from drift.revert import (
     SafetyAssessment,
     RiskLevel,
     Risk,
+    ExecutionResult,
     DiffAnalyzer,
     RevertDiff,
     EnhancedChange,
@@ -25,7 +26,13 @@ from drift.revert import (
     SystemValidator,
     RiskAssessor,
     SafetyBackupManager,
-    UserConfirmationManager
+    UserConfirmationManager,
+    ExecutionEngine,
+    CommandExecutor,
+    RollbackManager,
+    ProgressMonitor,
+    ExecutionStatus,
+    ProgressInfo
 )
 
 __all__ = [
@@ -39,6 +46,7 @@ __all__ = [
     "SafetyAssessment",
     "RiskLevel",
     "Risk",
+    "ExecutionResult",
     "DiffAnalyzer",
     "RevertDiff", 
     "EnhancedChange",
@@ -51,5 +59,11 @@ __all__ = [
     "SystemValidator",
     "RiskAssessor",
     "SafetyBackupManager",
-    "UserConfirmationManager"
+    "UserConfirmationManager",
+    "ExecutionEngine",
+    "CommandExecutor",
+    "RollbackManager",
+    "ProgressMonitor",
+    "ExecutionStatus",
+    "ProgressInfo"
 ]
