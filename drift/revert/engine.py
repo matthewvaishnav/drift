@@ -83,7 +83,7 @@ class RevertEngine:
             logger.info("Planning revert operations")
             operation_plan = self._plan_operations(diff_result, options)
             
-            # Step 4: Safety validation (placeholder - will be implemented in Phase 4)
+            # Step 4: Safety validation
             logger.info("Performing safety validation")
             safety_assessment = self._validate_safety(operation_plan, options)
             
@@ -96,6 +96,22 @@ class RevertEngine:
                     safety_assessment=safety_assessment,
                     duration_seconds=time.time() - start_time
                 )
+            
+            # Handle user confirmation for risky operations
+            if safety_assessment.requires_confirmation:
+                logger.info("Requesting user confirmation for high-risk operations")
+                from .safety import SafetyValidator
+                validator = SafetyValidator()
+                
+                if not validator.request_user_confirmation(safety_assessment.risks, operation_plan):
+                    return RevertResult(
+                        success=False,
+                        revert_id=revert_id,
+                        target_hash=target_hash,
+                        error_message="Operation cancelled by user",
+                        safety_assessment=safety_assessment,
+                        duration_seconds=time.time() - start_time
+                    )
             
             # Step 5: Create safety backup (placeholder - will be implemented in Phase 4)
             backup_hash = None
@@ -293,28 +309,21 @@ class RevertEngine:
     
     def _validate_safety(self, operation_plan: OperationPlan, options: RevertOptions) -> SafetyAssessment:
         """
-        Validate safety of the operation plan.
-        
-        This is a placeholder - will be implemented in Phase 4 with the SafetyValidator.
+        Validate safety of the operation plan using the SafetyValidator.
         """
-        # For now, return a basic safety assessment
-        # TODO: Implement actual safety validation in Phase 4
-        return SafetyAssessment(
-            safe=True,
-            risks=[],
-            requires_confirmation=False,
-            prerequisites_met=True
-        )
+        from .safety import SafetyValidator
+        
+        validator = SafetyValidator()
+        return validator.assess_safety(operation_plan, options)
     
     def _create_safety_backup(self) -> Optional[str]:
         """
-        Create a safety backup snapshot before revert.
-        
-        This is a placeholder - will be implemented in Phase 4.
+        Create a safety backup snapshot before revert using SafetyValidator.
         """
-        # TODO: Implement actual backup creation in Phase 4
-        logger.info("Safety backup creation not yet implemented")
-        return None
+        from .safety import SafetyValidator
+        
+        validator = SafetyValidator()
+        return validator.create_safety_backup()
     
     def _execute_operation_plan(self, operation_plan: OperationPlan, revert_id: str) -> Dict:
         """

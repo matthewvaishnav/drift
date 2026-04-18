@@ -12,6 +12,7 @@ from drift.revert import (
     OperationPlan,
     SafetyAssessment,
     RiskLevel,
+    Risk,
     DiffAnalyzer,
     RevertDiff,
     EnhancedChange,
@@ -19,7 +20,12 @@ from drift.revert import (
     OperationPlanner,
     CommandGenerator,
     DependencyGraph,
-    validate_operation_plan_dependencies
+    validate_operation_plan_dependencies,
+    SafetyValidator,
+    SystemValidator,
+    RiskAssessor,
+    SafetyBackupManager,
+    UserConfirmationManager
 )
 
 __all__ = [
@@ -32,6 +38,7 @@ __all__ = [
     "OperationPlan",
     "SafetyAssessment",
     "RiskLevel",
+    "Risk",
     "DiffAnalyzer",
     "RevertDiff", 
     "EnhancedChange",
@@ -39,5 +46,10 @@ __all__ = [
     "OperationPlanner",
     "CommandGenerator",
     "DependencyGraph", 
-    "validate_operation_plan_dependencies"
+    "validate_operation_plan_dependencies",
+    "SafetyValidator",
+    "SystemValidator",
+    "RiskAssessor",
+    "SafetyBackupManager",
+    "UserConfirmationManager"
 ]
