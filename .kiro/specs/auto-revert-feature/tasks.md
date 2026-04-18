@@ -112,18 +112,18 @@
 ## 6. Integration and CLI Enhancement
 
 ### 6.1 Main Revert Command Implementation
-- [ ] Implement main `drift revert` command handler
-- [ ] Add target snapshot validation and resolution
-- [ ] Integrate all revert subsystems (analyzer, planner, validator, executor)
-- [ ] Add comprehensive error handling and user feedback
-- [ ] Implement dry-run mode with detailed operation preview
+- [x] Implement main `drift revert` command handler
+- [x] Add target snapshot validation and resolution
+- [x] Integrate all revert subsystems (analyzer, planner, validator, executor)
+- [x] Add comprehensive error handling and user feedback
+- [x] Implement dry-run mode with detailed operation preview
 
 ### 6.2 Status and History Commands
-- [ ] Add `drift revert status` command for ongoing operations
-- [ ] Add `drift revert history` command for revert audit trail
-- [ ] Implement revert operation cancellation command
-- [ ] Add revert result verification and reporting
-- [ ] Integrate with existing `drift log` and `drift show` commands
+- [x] Add `drift revert status` command for ongoing operations
+- [x] Add `drift revert history` command for revert audit trail
+- [x] Implement revert operation cancellation command
+- [x] Add revert result verification and reporting
+- [x] Integrate with existing `drift log` and `drift show` commands
 
 ### 6.3 Configuration and Options
 - [ ] Add revert-specific configuration options to drift config

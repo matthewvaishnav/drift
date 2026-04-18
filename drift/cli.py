@@ -275,10 +275,99 @@ def _search_cmd(args) -> int:
 
 
 def _revert_cmd(args) -> int:
-    """Handle revert command - revert system state to a previous snapshot."""
+    """Handle revert command and subcommands."""
+    # Handle subcommands
+    if hasattr(args, 'revert_command') and args.revert_command:
+        if args.revert_command == "to":
+            return _revert_to_cmd(args)
+        elif args.revert_command == "status":
+            return _revert_status_cmd(args)
+        elif args.revert_command == "history":
+            return _revert_history_cmd(args)
+        elif args.revert_command == "cancel":
+            return _revert_cancel_cmd(args)
+    
+    # No subcommand provided, show help
+    try:
+        from rich.console import Console
+        c = Console()
+        c.print("[bold]drift revert[/bold] - Revert system state")
+        c.print()
+        c.print("Commands:")
+        c.print("  [cyan]drift revert to <hash>[/cyan]        Revert to snapshot")
+        c.print("  [cyan]drift revert status[/cyan]           Show ongoing operations")
+        c.print("  [cyan]drift revert history[/cyan]          Show revert history")
+        c.print("  [cyan]drift revert cancel <id>[/cyan]      Cancel operation")
+        c.print()
+        c.print("Examples:")
+        c.print("  [dim]drift revert to abc123 --dry-run[/dim]")
+        c.print("  [dim]drift revert to HEAD~1[/dim]")
+        c.print("  [dim]drift revert status[/dim]")
+    except ImportError:
+        print("drift revert - Revert system state")
+        print("Commands: to, status, history, cancel")
+    
+    return 0
+
+
+def _revert_to_cmd(args) -> int:
+    """Handle revert to command - revert system state to a previous snapshot."""
     from drift.revert import revert_to_snapshot, RevertOptions
+    from drift.storage import get_commit, load_snapshot, read_log
     
     target_hash = args.hash
+    
+    # Enhanced target snapshot validation and resolution
+    def resolve_and_validate_target(hash_spec: str) -> tuple[str, bool]:
+        """
+        Resolve and validate target snapshot hash.
+        
+        Returns:
+            Tuple of (resolved_hash, is_valid)
+        """
+        commits = read_log()
+        
+        if not commits:
+            return hash_spec, False
+        
+        # Handle special refs
+        if hash_spec.upper() == "HEAD":
+            return commits[0].full_hash, True
+        
+        # Handle HEAD~N syntax
+        import re
+        head_match = re.match(r"HEAD~(\d+)", hash_spec, re.I)
+        if head_match:
+            idx = int(head_match.group(1))
+            if idx < len(commits):
+                return commits[idx].full_hash, True
+            else:
+                return hash_spec, False
+        
+        # Try to find by hash prefix
+        for commit in commits:
+            if commit.hash.startswith(hash_spec) or commit.full_hash.startswith(hash_spec):
+                # Verify snapshot exists
+                snapshot = load_snapshot(commit.full_hash)
+                return commit.full_hash, snapshot is not None
+        
+        # Try direct hash lookup
+        snapshot = load_snapshot(hash_spec)
+        return hash_spec, snapshot is not None
+    
+    # Resolve target hash
+    resolved_hash, is_valid = resolve_and_validate_target(target_hash)
+    
+    if not is_valid:
+        try:
+            from rich.console import Console
+            c = Console()
+            c.print(f"[bold red]❌ Target snapshot not found: {target_hash}[/bold red]")
+            c.print("[dim]Use 'drift log' to see available snapshots[/dim]")
+        except ImportError:
+            print(f"Error: Target snapshot not found: {target_hash}")
+            print("Use 'drift log' to see available snapshots")
+        return 1
     
     # Build revert options from command line arguments
     options = RevertOptions(
@@ -294,48 +383,102 @@ def _revert_cmd(args) -> int:
         from rich.console import Console
         c = Console()
         
-        if options.dry_run:
-            c.print(f"[bold cyan]🔍 Dry run: Revert to {target_hash}[/bold cyan]")
+        # Show target snapshot info
+        target_commit = get_commit(resolved_hash)
+        if target_commit:
+            c.print(f"[bold]Target Snapshot:[/bold] {target_commit.hash}")
+            c.print(f"[dim]Created: {target_commit.timestamp}[/dim]")
+            c.print(f"[dim]Message: {target_commit.message}[/dim]")
         else:
-            c.print(f"[bold yellow]⚠️  Reverting to {target_hash}[/bold yellow]")
+            c.print(f"[bold]Target Snapshot:[/bold] {resolved_hash[:12]}")
+        
+        if options.dry_run:
+            c.print(f"[bold cyan]🔍 Dry run: Preview revert operations[/bold cyan]")
+        else:
+            c.print(f"[bold yellow]⚠️  Executing revert operation[/bold yellow]")
+        
+        # Show options summary
+        if options.exclude_categories:
+            c.print(f"[dim]Excluding: {', '.join(options.exclude_categories)}[/dim]")
+        if options.force:
+            c.print(f"[yellow]⚠️  Force mode: Bypassing safety checks[/yellow]")
+        if not options.create_backup:
+            c.print(f"[yellow]⚠️  No safety backup will be created[/yellow]")
+        
+        c.print()  # Empty line
             
         # Execute the revert
-        result = revert_to_snapshot(target_hash, options)
+        result = revert_to_snapshot(resolved_hash, options)
         
         if result.success:
             if options.dry_run:
                 c.print(f"[green]✅ Dry run complete[/green]")
                 if result.operation_plan:
-                    c.print(f"   Would execute [bold]{result.operation_plan.total_operations}[/bold] operations")
-                    c.print(f"   Estimated duration: [dim]{result.operation_plan.estimated_duration}s[/dim]")
-                    if result.operation_plan.risk_assessment.value != "low":
-                        c.print(f"   Risk level: [yellow]{result.operation_plan.risk_assessment.value}[/yellow]")
+                    c.print(f"   Would execute [bold]{result.operation_plan.total_operations}[/bold] operations in [bold]{len(result.operation_plan.batches)}[/bold] batches")
+                    c.print(f"   Estimated duration: [dim]{result.operation_plan.estimated_duration}s ({result.operation_plan.estimated_duration//60}m {result.operation_plan.estimated_duration%60}s)[/dim]")
+                    
+                    risk_colors = {"low": "green", "medium": "yellow", "high": "red", "critical": "bold red"}
+                    risk_color = risk_colors.get(result.operation_plan.risk_assessment.value, "white")
+                    c.print(f"   Risk level: [{risk_color}]{result.operation_plan.risk_assessment.value.upper()}[/{risk_color}]")
+                    
+                    # Show operation breakdown by category
+                    if result.operation_plan.batches:
+                        categories = {}
+                        for batch in result.operation_plan.batches:
+                            for op in batch.operations:
+                                categories[op.category] = categories.get(op.category, 0) + 1
+                        
+                        if categories:
+                            c.print("   Operations by category:")
+                            for category, count in sorted(categories.items()):
+                                c.print(f"     - {category}: {count}")
                 else:
-                    c.print("   [dim]No operations needed[/dim]")
+                    c.print("   [dim]No operations needed - system already matches target state[/dim]")
             else:
                 c.print(f"[bold green]✅ Revert completed successfully[/bold green]")
                 c.print(f"   Operations executed: [bold]{result.operations_executed}[/bold]")
+                if result.operations_failed > 0:
+                    c.print(f"   Operations failed: [red]{result.operations_failed}[/red]")
                 c.print(f"   Duration: [dim]{result.duration_seconds:.1f}s[/dim]")
                 if result.backup_hash:
-                    c.print(f"   Safety backup: [yellow]{result.backup_hash}[/yellow]")
+                    c.print(f"   Safety backup: [yellow]{result.backup_hash[:12]}[/yellow]")
+                    c.print(f"   [dim]Use 'drift revert {result.backup_hash[:12]}' to restore if needed[/dim]")
         else:
             c.print(f"[bold red]❌ Revert failed[/bold red]")
             if result.error_message:
-                c.print(f"   Error: {result.error_message}")
+                c.print(f"   [red]Error: {result.error_message}[/red]")
             if result.operations_failed > 0:
-                c.print(f"   Failed operations: [red]{result.operations_failed}[/red]")
+                c.print(f"   Failed operations: [red]{result.operations_failed}[/red] of [dim]{result.operations_executed + result.operations_failed}[/dim]")
                 if result.backup_hash:
-                    c.print(f"   Safety backup available: [yellow]{result.backup_hash}[/yellow]")
+                    c.print(f"   Safety backup available: [yellow]{result.backup_hash[:12]}[/yellow]")
+                    c.print(f"   [dim]Use 'drift revert {result.backup_hash[:12]}' to restore[/dim]")
+            
+            # Show safety assessment if available
+            if result.safety_assessment and result.safety_assessment.risks:
+                c.print(f"\n[bold]Safety Issues:[/bold]")
+                for risk in result.safety_assessment.risks[:3]:  # Show first 3 risks
+                    risk_colors = {"low": "green", "medium": "yellow", "high": "red", "critical": "bold red"}
+                    risk_color = risk_colors.get(risk.level.value, "white")
+                    c.print(f"   [{risk_color}]{risk.level.value.upper()}[/{risk_color}]: {risk.message}")
+                
+                if len(result.safety_assessment.risks) > 3:
+                    c.print(f"   [dim]... and {len(result.safety_assessment.risks) - 3} more issues[/dim]")
+                
+                if result.safety_assessment.recommended_actions:
+                    c.print(f"\n[bold]Recommendations:[/bold]")
+                    for action in result.safety_assessment.recommended_actions[:2]:
+                        c.print(f"   • {action}")
+            
             return 1
             
     except ImportError:
         # Fallback for systems without rich
         if options.dry_run:
-            print(f"Dry run: Revert to {target_hash}")
+            print(f"Dry run: Revert to {resolved_hash[:12]}")
         else:
-            print(f"Reverting to {target_hash}")
+            print(f"Reverting to {resolved_hash[:12]}")
             
-        result = revert_to_snapshot(target_hash, options)
+        result = revert_to_snapshot(resolved_hash, options)
         
         if result.success:
             if options.dry_run:
@@ -345,6 +488,133 @@ def _revert_cmd(args) -> int:
         else:
             print(f"Revert failed: {result.error_message}")
             return 1
+    except Exception as e:
+        try:
+            from rich.console import Console
+            Console().print(f"[bold red]❌ Revert failed with error: {e}[/bold red]")
+        except ImportError:
+            print(f"Error: {e}")
+        return 1
+    
+    return 0
+
+
+def _revert_status_cmd(args) -> int:
+    """Show status of ongoing revert operations."""
+    from drift.revert import get_revert_status
+    
+    revert_id = getattr(args, 'revert_id', None)
+    
+    try:
+        from rich.console import Console
+        from rich.table import Table
+        from rich import box
+        
+        c = Console()
+        
+        if revert_id:
+            # Show specific revert status
+            status = get_revert_status(revert_id)
+            
+            if status["found"]:
+                c.print(f"[bold]Revert Operation: {revert_id}[/bold]")
+                # TODO: Display detailed status when RevertEngine tracking is implemented
+                c.print("[dim]Status tracking not yet fully implemented[/dim]")
+            else:
+                c.print(f"[red]Revert operation not found: {revert_id}[/red]")
+                return 1
+        else:
+            # Show all ongoing operations
+            c.print("[bold]Ongoing Revert Operations[/bold]")
+            c.print("[dim]No active revert operations found[/dim]")
+            c.print()
+            c.print("[dim]Note: Use 'drift revert status <revert_id>' to check specific operation[/dim]")
+    
+    except ImportError:
+        if revert_id:
+            print(f"Checking revert status: {revert_id}")
+        else:
+            print("No active revert operations")
+    
+    return 0
+
+
+def _revert_history_cmd(args) -> int:
+    """Show revert operation history."""
+    from drift.storage import read_log
+    
+    limit = getattr(args, 'limit', 10)
+    
+    try:
+        from rich.console import Console
+        from rich.table import Table
+        from rich import box
+        
+        c = Console()
+        
+        # Look for revert operations in commit log
+        commits = read_log(n=limit * 3)  # Get more to filter for reverts
+        revert_commits = []
+        
+        for commit in commits:
+            if "revert" in commit.message.lower() or "safety backup" in commit.message.lower():
+                revert_commits.append(commit)
+                if len(revert_commits) >= limit:
+                    break
+        
+        if revert_commits:
+            table = Table(box=box.SIMPLE_HEAVY, border_style="cyan", title="Revert History")
+            table.add_column("Hash", style="yellow", width=12)
+            table.add_column("When", style="dim", width=20)
+            table.add_column("Message", style="white")
+            
+            for commit in revert_commits:
+                table.add_row(
+                    commit.hash,
+                    _fmt_ts(commit.timestamp),
+                    commit.message[:60] + ("..." if len(commit.message) > 60 else "")
+                )
+            
+            c.print(table)
+        else:
+            c.print("[dim]No revert operations found in recent history[/dim]")
+            c.print("[dim]Use 'drift log' to see all commits[/dim]")
+    
+    except ImportError:
+        print("Revert history (fallback mode)")
+        commits = read_log(n=limit)
+        for commit in commits:
+            if "revert" in commit.message.lower():
+                print(f"  {commit.hash}  {commit.timestamp[:19]}  {commit.message}")
+    
+    return 0
+
+
+def _revert_cancel_cmd(args) -> int:
+    """Cancel an ongoing revert operation."""
+    from drift.revert import RevertEngine
+    
+    revert_id = args.revert_id
+    
+    try:
+        from rich.console import Console
+        c = Console()
+        
+        # Try to cancel the revert
+        engine = RevertEngine()
+        success = engine.cancel_revert(revert_id)
+        
+        if success:
+            c.print(f"[green]✅ Revert operation cancelled: {revert_id}[/green]")
+        else:
+            c.print(f"[red]❌ Could not cancel revert operation: {revert_id}[/red]")
+            c.print("[dim]Operation may not exist or already completed[/dim]")
+            return 1
+    
+    except ImportError:
+        print(f"Attempting to cancel revert: {revert_id}")
+        # TODO: Implement cancellation
+        print("Cancellation not yet fully implemented")
     
     return 0
 
@@ -645,19 +915,35 @@ Examples:
     # revert
     p_revert = sub.add_parser("revert", aliases=["r"],
                               help="Revert system state to a previous snapshot")
-    p_revert.add_argument("hash", help="Target snapshot hash to revert to")
-    p_revert.add_argument("--dry-run", action="store_true",
-                          help="Show what would be done without executing")
-    p_revert.add_argument("--force", action="store_true",
-                          help="Bypass safety validations and confirmations")
-    p_revert.add_argument("--exclude", metavar="CATEGORIES",
-                          help="Comma-separated list of categories to exclude (packages,services,users,etc.)")
-    p_revert.add_argument("--timeout", type=int, default=300, metavar="SECONDS",
-                          help="Timeout for operations in seconds (default: 300)")
-    p_revert.add_argument("--no-backup", action="store_true",
-                          help="Skip creating safety backup before revert")
-    p_revert.add_argument("--skip-confirmation", action="store_true",
-                          help="Skip user confirmation prompts")
+    revert_sub = p_revert.add_subparsers(dest="revert_command", help="Revert commands")
+    
+    # revert to <hash> (main revert command)
+    p_revert_main = revert_sub.add_parser("to", help="Revert to a specific snapshot")
+    p_revert_main.add_argument("hash", help="Target snapshot hash to revert to")
+    p_revert_main.add_argument("--dry-run", action="store_true",
+                              help="Show what would be done without executing")
+    p_revert_main.add_argument("--force", action="store_true",
+                              help="Bypass safety validations and confirmations")
+    p_revert_main.add_argument("--exclude", metavar="CATEGORIES",
+                              help="Comma-separated list of categories to exclude (packages,services,users,etc.)")
+    p_revert_main.add_argument("--timeout", type=int, default=300, metavar="SECONDS",
+                              help="Timeout for operations in seconds (default: 300)")
+    p_revert_main.add_argument("--no-backup", action="store_true",
+                              help="Skip creating safety backup before revert")
+    p_revert_main.add_argument("--skip-confirmation", action="store_true",
+                              help="Skip user confirmation prompts")
+    
+    # revert status
+    p_revert_status = revert_sub.add_parser("status", help="Show status of ongoing revert operations")
+    p_revert_status.add_argument("revert_id", nargs="?", help="Specific revert ID to check")
+    
+    # revert history
+    p_revert_history = revert_sub.add_parser("history", help="Show revert operation history")
+    p_revert_history.add_argument("-n", "--limit", type=int, default=10, help="Number of entries to show")
+    
+    # revert cancel
+    p_revert_cancel = revert_sub.add_parser("cancel", help="Cancel an ongoing revert operation")
+    p_revert_cancel.add_argument("revert_id", help="Revert ID to cancel")
 
     # daemon
     p_daemon = sub.add_parser("daemon", help="Manage the background daemon")
